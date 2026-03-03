@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join, basename } from 'path';
 import { homedir } from 'os';
+import { getPaiDir } from '../hooks/lib/paths';
 
 export interface InstallationInfo {
   path: string;
@@ -36,11 +37,15 @@ const HOME = homedir();
 
 /**
  * Standard locations to check for PAI installations
+ * PAI_DIR is checked first, then standard fallback locations
  */
 export const STANDARD_LOCATIONS = [
-  join(HOME, '.claude'),
-  join(HOME, '.claude-BACKUP'),
-  join(HOME, '.claude-old'),
+  getPaiDir(),
+  ...[
+    join(HOME, '.claude'),
+    join(HOME, '.claude-BACKUP'),
+    join(HOME, '.claude-old'),
+  ].filter(loc => loc !== getPaiDir()),
 ];
 
 /**
