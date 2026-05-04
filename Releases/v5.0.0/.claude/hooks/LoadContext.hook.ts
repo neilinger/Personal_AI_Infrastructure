@@ -227,13 +227,15 @@ function getRecentWorkSessions(paiDir: string): WorkSession[] {
       const metaPath = join(dirPath, 'META.yaml');
 
       if (isaPath) {
-        // v4.0+: Read from ISA.md / PRD.md frontmatter
+        // v4.0+: Read from ISA.md / PRD.md frontmatter.
+        // Modern ISAs (Algorithm v6.x) declare `phase:` (observe/think/.../complete);
+        // legacy v4.0 PRDs and pre-v4.0 META.yaml use `status:` (handled in the META branch below).
         try {
           const head = readFileSync(isaPath, 'utf-8').substring(0, 600);
-          const statusMatch = head.match(/^status:\s*"?(\w+)"?/m);
+          const phaseMatch = head.match(/^phase:\s*"?(\w+)"?/m);
           const titleMatch = head.match(/^title:\s*"?(.+?)"?\s*$/m);
           const sessionIdMatch = head.match(/^session_id:\s*"?(.+?)"?\s*$/m);
-          if (statusMatch) status = statusMatch[1];
+          if (phaseMatch) status = phaseMatch[1];
           if (titleMatch) rawTitle = titleMatch[1];
           if (sessionIdMatch) sessionId = sessionIdMatch[1]?.trim();
         } catch { /* skip */ }
@@ -254,7 +256,8 @@ function getRecentWorkSessions(paiDir: string): WorkSession[] {
 
       try {
 
-        if (status === 'COMPLETED') continue;
+        // Skip completed sessions: legacy uppercase 'COMPLETED' OR modern lowercase 'complete'.
+        if (status.toLowerCase() === 'complete' || status.toLowerCase() === 'completed') continue;
         if (rawTitle.toLowerCase().startsWith('tasknotification') || rawTitle.length < 10) continue;
         if (sessionId && seenSessionIds.has(sessionId)) continue;
         if (sessionId) seenSessionIds.add(sessionId);
@@ -278,11 +281,12 @@ function getRecentWorkSessions(paiDir: string): WorkSession[] {
           if (artifactFile) {
             const isaContent = readFileSync(artifactFile, 'utf-8');
             const idMatch = isaContent.match(/^id:\s*(.+)$/m);
-            const statusMatch2 = isaContent.match(/^status:\s*(.+)$/m);
+            // Modern ISA frontmatter uses `phase:`; legacy PRDs may have used `status:`.
+            const phaseMatch2 = isaContent.match(/^(?:phase|status):\s*(.+)$/m);
             const verifyMatch = isaContent.match(/^verification_summary:\s*"?(.+?)"?$/m);
             isa = {
               id: idMatch?.[1]?.trim() || 'ISA',
-              status: statusMatch2?.[1]?.trim() || 'UNKNOWN',
+              status: phaseMatch2?.[1]?.trim() || 'UNKNOWN',
               progress: verifyMatch?.[1]?.trim() || '0/0'
             };
           }
